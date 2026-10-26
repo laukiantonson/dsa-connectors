@@ -75,9 +75,12 @@ contract AaveHelpers is Helper {
 			address variableDebtTokenAddress
 		) = aaveData.getReserveTokensAddresses(_token);
 
-		stableBorrow = ATokenInterface(stableDebtTokenAddress).balanceOf(
-			userAccount
-		);
+		// Aave v3.2+ removed stable rate: the data provider returns address(0) for the stable debt token
+		if (stableDebtTokenAddress != address(0)) {
+			stableBorrow = ATokenInterface(stableDebtTokenAddress).balanceOf(
+				userAccount
+			);
+		}
 		variableBorrow = ATokenInterface(variableDebtTokenAddress).balanceOf(
 			userAccount
 		);
@@ -129,18 +132,12 @@ contract AaveHelpers is Helper {
 					data.variableBorrowAmts[i]
 				) = getBorrowAmount(_token, userAccount);
 
-				if (data.variableBorrowAmts[i] != 0) {
-					data.variableBorrowAmtsWithFee[i] = add(
-						data.variableBorrowAmts[i],
-						inputData.flashLoanFees[i]
-					);
-					data.stableBorrowAmtsWithFee[i] = data.stableBorrowAmts[i];
-				} else {
-					data.stableBorrowAmtsWithFee[i] = add(
-						data.stableBorrowAmts[i],
-						inputData.flashLoanFees[i]
-					);
-				}
+				// the flashloan fee always goes on the variable leg: stable borrowing (rate mode 1) reverts on Aave v3.2+
+				data.variableBorrowAmtsWithFee[i] = add(
+					data.variableBorrowAmts[i],
+					inputData.flashLoanFees[i]
+				);
+				data.stableBorrowAmtsWithFee[i] = data.stableBorrowAmts[i];
 
 				data.totalBorrowAmts[i] = add(
 					data.stableBorrowAmts[i],
